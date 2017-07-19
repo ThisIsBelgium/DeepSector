@@ -22,9 +22,10 @@ namespace DeepSector
         {
             //asynicing run method
             var prog = new Program();
-            prog.RunBotAsync().GetAwaiter().GetResult();            
+            bool active = false;
+            prog.RunBotAsync(active).GetAwaiter().GetResult();
         }
-        public async Task RunBotAsync()
+        public async Task RunBotAsync(bool active)
         {
             //config load
             var json = "";
@@ -58,6 +59,61 @@ namespace DeepSector
             this.Commands.CommandExecuted += this.Commands_CommandExecuted;
             this.Commands.CommandErrored += this.Commands_CommandErrored;
             this.Commands.RegisterCommands<AdminCommands>();
+            //Events
+            //user join welcome
+            Client.GuildMemberAdd += async e =>
+            {
+                await e.Client.SendMessageAsync(e.Guild.DefaultChannel, $"Welcome to the shit show {e.Member.Username}!");
+                await e.Member.GrantRoleAsync(e.Guild.GetRole(336934234016972810));
+            };
+            // user leave/removed
+            Client.GuildMemberRemove += async e =>
+            {
+                await e.Client.SendMessageAsync(e.Guild.DefaultChannel, $"Peace {e.Member.Username}, must've been a nerd");
+            };
+
+            Client.MessageCreated += async e =>
+            {
+
+                var admin = e.Guild.GetRole(336906767109849107);
+                DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
+                if (e.Message.Content.ToLower() == "#adminon" && member.Roles.FirstOrDefault() == admin || active == true)
+                {
+                    if (e.Message.Content.ToLower() == "#adminon")
+                    {
+                        active = true;
+                        await e.Message.DeleteAsync();
+                    }
+                    else if (e.Message.Content.ToLower() == "#adminoff" && member.Roles.FirstOrDefault() == admin)
+                    {
+                        active = false;
+                        await e.Message.DeleteAsync();
+                    }
+                    else
+                    {                 
+                        string[] bannedwords = cfgjson.BannedWords;
+                        foreach (var bannedword in bannedwords)
+                        {
+                            if (e.Message.Content.ToLower().Contains(bannedword))
+                            {
+                                await e.Message.DeleteAsync();
+                                DiscordMember offender = await e.Guild.GetMemberAsync(e.Author.Id);
+                                DiscordDmChannel warnChannel = await offender.CreateDmChannelAsync();
+                                var emoji = DiscordEmoji.FromName(e.Client, ":radioactive:");
+                                var embed = new DiscordEmbed
+                                {
+                                    Title = emoji + "Warning",
+                                    Description = $"'{e.Message.Content}' was removed due to inappropriate language try being mature for once",
+                                    Color = 0xf9ff0f
+                                };
+                                await warnChannel.SendMessageAsync("", embed: embed);
+
+                            }
+                        }
+                    }
+                }
+
+            };
             //connect
             await this.Client.ConnectAsync();
             //stay open
@@ -90,7 +146,7 @@ namespace DeepSector
         {
             //log errored commands
             e.Context.Client.DebugLogger.LogMessage(LogLevel.Error, "DeepSector", $"{e.Context.User.Username} tried executing '{e.Command?.QualifiedName ?? "<unknown command>"}'but it failed:{e.Exception.GetType()}:{e.Exception.Message ?? "<no message>"}", DateTime.Now);
-            if(e.Exception is ChecksFailedException)
+            if (e.Exception is ChecksFailedException)
             {
                 var emoji = DiscordEmoji.FromName(e.Context.Client, ":no_entry:");
                 var embed = new DiscordEmbed
@@ -109,6 +165,9 @@ namespace DeepSector
 
             [JsonProperty("prefix")]
             public string CommandPrefix { get; private set; }
+
+            [JsonProperty("bannedwords")]
+            public string[] BannedWords { get; private set; }
         }
     }
 }
