@@ -10,6 +10,7 @@ using DSharpPlus.VoiceNext;
 using DSharpPlus.VoiceNext.Codec;
 using Newtonsoft.Json;
 using System.IO;
+using System.Threading;
 
 namespace DeepSector
 {
@@ -71,12 +72,11 @@ namespace DeepSector
             {
                 await e.Client.SendMessageAsync(e.Guild.DefaultChannel, $"Peace {e.Member.Username}, must've been a nerd");
             };
-
             Client.MessageCreated += async e =>
             {
-
-                var admin = e.Guild.GetRole(336906767109849107);
                 DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
+                var admin = e.Guild.GetRole(336906767109849107);
+               
                 if (e.Message.Content.ToLower() == "#adminon" && member.Roles.FirstOrDefault() == admin || active == true)
                 {
                     if (e.Message.Content.ToLower() == "#adminon")
@@ -90,7 +90,17 @@ namespace DeepSector
                         await e.Message.DeleteAsync();
                     }
                     else
-                    {                 
+                    {
+                        var spammessages = await e.Channel.GetMessagesAsync(5);
+                        var spamcheck = spammessages.ToList();
+                        spamcheck.RemoveAt(0);
+                        foreach (var message in spamcheck)
+                        {
+                            if (e.Author.Id == message.Author.Id && e.Message.Content == message.Content)
+                            {
+                                await e.Channel.DeleteMessageAsync(message);
+                            }
+                        }
                         string[] bannedwords = cfgjson.BannedWords;
                         foreach (var bannedword in bannedwords)
                         {

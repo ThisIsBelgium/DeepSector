@@ -102,5 +102,25 @@ namespace DeepSector
             };
             await channel.SendMessageAsync("", embed: embed); 
         }
+        [Command("softban")]
+        [Description("Puts user in a role that stops them from talking")]
+        [RequirePermissions(Permissions.ManageMessages)]
+        public async Task softban(CommandContext ctx, DiscordMember member, [RemainingText] string reason)
+        {
+            await ctx.Message.DeleteAsync();
+            List<DiscordRole> softban = new List<DiscordRole>();
+            softban.Add(ctx.Guild.GetRole(337330093368279052));
+            var emoji = DiscordEmoji.FromName(ctx.Client, ":no_entry_sign:");
+            DiscordDmChannel channel = await member.CreateDmChannelAsync();
+            await channel.TriggerTypingAsync();
+            await member.ReplaceRolesAsync(softban);
+            var embed = new DiscordEmbed
+            {
+                Title = emoji + "Softban",
+                Description = reason + "\n" + "Please contact a mod or an admin to get your role back", 
+                Color = 0xf9ff0f
+            };
+            await channel.SendMessageAsync("", embed: embed);
+        }
     }
 }
