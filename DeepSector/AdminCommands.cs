@@ -11,6 +11,7 @@ namespace DeepSector
     [Hidden]
     internal class AdminCommands
     {
+        DBDataContext db = new DBDataContext();
         [Command("hello")]
         [Description("I'm still learning")]
         public async Task Test(CommandContext ctx)
@@ -23,7 +24,7 @@ namespace DeepSector
         [Command("giverole")]
         [Description("Update user roles")]
         [RequirePermissions(Permissions.ManageGuild)]
-        public async Task GiveAdmin(CommandContext ctx,DiscordMember member, DiscordRole role)
+        public async Task GiveAdmin(CommandContext ctx, DiscordMember member, DiscordRole role)
         {
             await ctx.Message.DeleteAsync();
             await ctx.TriggerTypingAsync();
@@ -31,7 +32,7 @@ namespace DeepSector
             roles.Add(role);
             await member.ReplaceRolesAsync(roles);
             await ctx.RespondAsync($"{member.Username} role updated to {role}!");
-            
+
         }
         [Command("removeroles")]
         [Description("strips specific users roles")]
@@ -48,7 +49,7 @@ namespace DeepSector
         [Hidden]
         [Description("Executes command as user")]
         [RequireOwner]
-        public async Task Sudo(CommandContext ctx,DiscordMember member,[RemainingText] string command)
+        public async Task Sudo(CommandContext ctx, DiscordMember member, [RemainingText] string command)
         {
             await ctx.Message.DeleteAsync();
             await ctx.TriggerTypingAsync();
@@ -63,8 +64,8 @@ namespace DeepSector
             await ctx.Message.DeleteAsync();
             await ctx.TriggerTypingAsync();
             var roles = ctx.Guild.Roles;
-            string rolestring = null; 
-            foreach(var role in roles)
+            string rolestring = null;
+            foreach (var role in roles)
             {
                 rolestring += role + "\n";
             };
@@ -84,11 +85,11 @@ namespace DeepSector
             await ctx.Message.DeleteAsync();
             var messagesToDelete = await ctx.Channel.GetMessagesAsync(msgamt);
             await ctx.Channel.DeleteMessagesAsync(messagesToDelete);
-        } 
+        }
         [Command("warn")]
         [Description("dms a user warning them")]
         [RequirePermissions(Permissions.ManageMessages)]
-        public async Task warn(CommandContext ctx, DiscordMember member,[RemainingText] string reason)
+        public async Task warn(CommandContext ctx, DiscordMember member, [RemainingText] string reason)
         {
             await ctx.Message.DeleteAsync();
             DiscordDmChannel channel = await member.CreateDmChannelAsync();
@@ -100,7 +101,7 @@ namespace DeepSector
                 Description = reason,
                 Color = 0xf9ff0f
             };
-            await channel.SendMessageAsync("", embed: embed); 
+            await channel.SendMessageAsync("", embed: embed);
         }
         [Command("softban")]
         [Description("Puts user in a role that stops them from talking")]
@@ -117,10 +118,75 @@ namespace DeepSector
             var embed = new DiscordEmbed
             {
                 Title = emoji + "Softban",
-                Description = reason + "\n" + "Please contact a mod or an admin to get your role back", 
+                Description = reason + "\n" + "Please contact a mod or an admin to get your role back",
                 Color = 0xf9ff0f
             };
             await channel.SendMessageAsync("", embed: embed);
+        }
+        [Command("selectusers")]
+        [Description("selects random users from a role dependent on number")]
+        [RequirePermissions(Permissions.MoveMembers)]
+        public async Task selectusers(CommandContext ctx, DiscordRole role, int amount)
+        {
+            List<DiscordMember> roleselection = new List<DiscordMember>();
+            List<DiscordMember> selectedmembers = new List<DiscordMember>();
+            await ctx.Message.DeleteAsync();
+            await ctx.TriggerTypingAsync();
+            Random random = new Random();
+            var members = await ctx.Guild.GetAllMembersAsync();
+            foreach (var member in members)
+            {
+                if (member.Roles.Contains(role))
+                {
+                    roleselection.Add(member);
+                }
+            }
+            var amountinrole = roleselection.Count;
+            for (var i = 0; i <= amount - 1; i++)
+            {
+                var selected = random.Next(amountinrole);
+                var selectedmember = roleselection[selected];
+                selectedmembers.Add(selectedmember);
+            }
+            var tosend = "Here is your list of members";
+            foreach (var member in selectedmembers)
+            {
+                tosend += "\n" + $"{member.DisplayName}";
+            }
+            await ctx.Channel.SendMessageAsync(tosend);
+
+        }
+        [Command("givetokens")]
+        [Description("gives specified user tokens")]
+        [RequirePermissions(Permissions.ManageGuild)]
+        public async Task givetokens(CommandContext ctx, DiscordMember member, int amount)
+        {
+            await ctx.Message.DeleteAsync();
+            var useridstring = member.Id.ToString();
+            await ctx.TriggerTypingAsync();
+            var userquery = from tgbr in db.tgbrs
+                            where tgbr.userid == useridstring
+                            select tgbr;
+            foreach (var user in userquery)
+            {
+                if (user.tokens >= 100)
+                {
+                    if (user.levels == null)
+                    {
+                        user.levels = 1;
+                        user.tokens = 0;
+                    }
+                    else
+                    {
+                        user.levels++;
+                        user.tokens = 0;
+                    }
+
+                }
+                user.tokens += amount;
+                db.SubmitChanges();
+            }
+            await ctx.Channel.SendMessageAsync($"{member.DisplayName} was given {amount} tokens congrats!");
         }
     }
 }
