@@ -169,24 +169,65 @@ namespace DeepSector
                             select tgbr;
             foreach (var user in userquery)
             {
-                if (user.tokens >= 100)
+                if (amount > 100)
                 {
-                    if (user.levels == null)
-                    {
-                        user.levels = 1;
-                        user.tokens = 0;
-                    }
-                    else
-                    {
-                        user.levels++;
-                        user.tokens = 0;
-                    }
-
+                    amount = 100;
+                    var channel = await ctx.Member.CreateDmChannelAsync();
+                    await channel.SendMessageAsync("Bot is angry that you tried to spam tokens remember now MAX 100 tokens");
                 }
                 user.tokens += amount;
+                if (user.tokens >= 100)
+                {
+                    user.levels++;
+                    await ctx.Channel.SendMessageAsync($"{user.username} just leveled to level {user.levels} congrats");
+                    user.tokens = 0;
+                }
+                else if (user.tokens == null)
+                {
+                    user.tokens = 0;
+                    user.tokens += amount;
+                    if (user.tokens >= 100)
+                    {
+                        user.levels++;
+                        await ctx.Channel.SendMessageAsync($"{user.username} just leveled to level {user.levels} congrats");
+                        user.tokens = 0;
+                    }
+                    await ctx.Channel.SendMessageAsync($"{member.DisplayName} was given {amount} tokens congrats!");
+                }
+                else
+                {
+                    await ctx.Channel.SendMessageAsync($"{member.DisplayName} was given {amount} tokens congrats!");
+                }
                 db.SubmitChanges();
             }
-            await ctx.Channel.SendMessageAsync($"{member.DisplayName} was given {amount} tokens congrats!");
+
+        }
+        [Command("addusers")]
+        [Description("adds users to db")]
+        [RequireOwner]
+        public async Task addusers(CommandContext ctx)
+        {
+            await ctx.Message.DeleteAsync();
+            await ctx.TriggerTypingAsync();
+            foreach (var user in ctx.Guild.Members)
+            {
+                var useridstring = user.Id.ToString();
+                tgbr member = new tgbr
+                {
+                    userid = useridstring,
+                    username = user.Username,
+                };
+                var userquery = from tgbr in db.tgbrs
+                                where tgbr.userid == useridstring
+                                select tgbr;
+                var querylist = userquery.ToList();
+                if (querylist.Count() == 0 && user.IsBot == false && user.Username != "DeepSector")
+                {
+                    db.tgbrs.InsertOnSubmit(member);
+                    db.SubmitChanges();
+                }
+            }
+            await ctx.Channel.SendMessageAsync("Users added to db!");
         }
     }
 }

@@ -88,7 +88,9 @@ namespace DeepSector
 		
 		private System.Nullable<int> _tokens;
 		
-		private System.Nullable<int> _levels;
+		private int _levels;
+		
+		private int _msg_count;
 		
     #region Extensibility Method Definitions
     partial void OnLoaded();
@@ -102,8 +104,10 @@ namespace DeepSector
     partial void OnusernameChanged();
     partial void OntokensChanging(System.Nullable<int> value);
     partial void OntokensChanged();
-    partial void OnlevelsChanging(System.Nullable<int> value);
+    partial void OnlevelsChanging(int value);
     partial void OnlevelsChanged();
+    partial void Onmsg_countChanging(int value);
+    partial void Onmsg_countChanged();
     #endregion
 		
 		public tgbr()
@@ -191,8 +195,8 @@ namespace DeepSector
 			}
 		}
 		
-		[global::System.Data.Linq.Mapping.ColumnAttribute(Storage="_levels", DbType="Int")]
-		public System.Nullable<int> levels
+		[global::System.Data.Linq.Mapping.ColumnAttribute(Storage="_levels", DbType="Int NOT NULL")]
+		public int levels
 		{
 			get
 			{
@@ -207,6 +211,26 @@ namespace DeepSector
 					this._levels = value;
 					this.SendPropertyChanged("levels");
 					this.OnlevelsChanged();
+				}
+			}
+		}
+		
+		[global::System.Data.Linq.Mapping.ColumnAttribute(Storage="_msg_count", DbType="Int NOT NULL")]
+		public int msg_count
+		{
+			get
+			{
+				return this._msg_count;
+			}
+			set
+			{
+				if ((this._msg_count != value))
+				{
+					this.Onmsg_countChanging(value);
+					this.SendPropertyChanging();
+					this._msg_count = value;
+					this.SendPropertyChanged("msg_count");
+					this.Onmsg_countChanged();
 				}
 			}
 		}

@@ -19,32 +19,34 @@ namespace DeepSector
     public class Events
     {
         public DiscordClient Client;
-        DBDataContext db = new DBDataContext();
         bool active = false;
         public string json;
-        
+
         public async Task run()
         {
             var cfgjson = JsonConvert.DeserializeObject<ConfigJson>(json);
             Client.GuildMemberAdd += async e =>
                 {
-                    await e.Client.SendMessageAsync(e.Guild.DefaultChannel, $"Welcome to the shit show {e.Member.Username}!");
-                    await e.Member.GrantRoleAsync(e.Guild.GetRole(336934234016972810));
-                    var useridstring = e.Member.Id.ToString();
-                    tgbr user = new tgbr
+                    using (DBDataContext db = new DBDataContext())
                     {
-                        userid = useridstring,
-                        username = e.Member.Username,
-                        tokens = 0
-                    };
-                    var userquery = from tgbr in db.tgbrs
-                                    where tgbr.userid == useridstring
-                                    select tgbr;
-                    var querylist = userquery.ToList();
-                    if (querylist.Count() == 0)
-                    {
-                        db.tgbrs.InsertOnSubmit(user);
-                        db.SubmitChanges();
+
+                        await e.Client.SendMessageAsync(e.Guild.DefaultChannel, $"Welcome to the shit show {e.Member.Username}!");
+                        await e.Member.GrantRoleAsync(e.Guild.GetRole(336934234016972810));
+                        var useridstring = e.Member.Id.ToString();
+                        tgbr user = new tgbr
+                        {
+                            userid = useridstring,
+                            username = e.Member.Username,
+                        };
+                        var userquery = from tgbr in db.tgbrs
+                                        where tgbr.userid == useridstring
+                                        select tgbr;
+                        var querylist = userquery.ToList();
+                        if (querylist.Count() == 0)
+                        {
+                            db.tgbrs.InsertOnSubmit(user);
+                            db.SubmitChanges();
+                        }
                     }
 
                 };
@@ -104,6 +106,45 @@ namespace DeepSector
                     }
                 }
 
+            };
+            Client.MessageCreated += async e =>
+            {
+                using (DBDataContext db = new DBDataContext())
+                {
+                    if (e.Message.Content.Contains("#") == false)
+                    {
+                        var useridstring = e.Author.Id.ToString();
+                        tgbr user = new tgbr
+                        {
+                            userid = useridstring,
+                            username = e.Author.Username,
+                        };
+                        var userquery = from tgbr in db.tgbrs
+                                        where tgbr.userid == useridstring
+                                        select tgbr;
+                        var querylist = userquery.ToList();
+                        if (querylist.Count() == 0 && e.Author.IsBot == false)
+                        {
+                            db.tgbrs.InsertOnSubmit(user);
+                            db.SubmitChanges();
+                        }
+                        else if (querylist.Count() == 1 && e.Author.IsBot == false)
+                        {
+                            if (querylist[0].msg_count >= (3 * querylist[0].levels))
+                            {
+                                querylist[0].levels++;
+                                querylist[0].msg_count = 0;
+                                db.SubmitChanges();
+                                await e.Channel.SendMessageAsync($"{e.Author.Username} just leveled to level {querylist[0].levels} congrats!");
+                            }
+                            else
+                            {
+                                querylist[0].msg_count++;
+                                db.SubmitChanges();
+                            }
+                        }
+                    }
+                }
             };
             await Task.Delay(-1);
 
