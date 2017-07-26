@@ -25,6 +25,7 @@ namespace DeepSector
 
     public class DJCommands
     {
+        CancellationTokenSource source = new CancellationTokenSource();
         List<Songs> playlist = new List<Songs>();
         [Command("join")]
         [Description("joins the users current voice channel")]
@@ -91,23 +92,25 @@ namespace DeepSector
             Songs song = new Songs
             {
                 filename = searchlistresponse.Items[0].Snippet.Title,
-                filepath = outputfolder + filename+".mp3"
+                filepath = outputfolder + filename + ".mp3"
             };
-            playlist.Add(song);
             var downloader = new AudioDownloader(dl, filename, outputfolder);
-            downloader.FinishedDownload += finished(searchlistresponse, ctx);
+            downloader.FinishedDownload += finished(searchlistresponse, ctx, song);
             downloader.Download();
-            
+
+
         }
-        static AudioDownloader.FinishedDownloadEventHandler finished(SearchListResponse searchlistresponse, CommandContext ctx)
+        public AudioDownloader.FinishedDownloadEventHandler finished(SearchListResponse searchlistresponse, CommandContext ctx, Songs song)
         {
             ctx.RespondAsync($"{searchlistresponse.Items[0].Snippet.Title} has been downloaded");
+            playlist.Add(song);
             return null;
         }
         [Command("play")]
         [Description("plays the currently queued songs")]
         public async Task play(CommandContext ctx)
         {
+            var token = source.Token;
             await ctx.Message.DeleteAsync();
             var vnext = ctx.Client.GetVoiceNextClient();
             if (vnext == null)
@@ -121,39 +124,99 @@ namespace DeepSector
                 await ctx.RespondAsync("not in guild");
                 return;
             }
-            foreach (var song in playlist)
+            try
             {
-                while (vnc.IsPlaying)
+                foreach (var song in playlist)
                 {
-                    await vnc.WaitForPlaybackFinishAsync();
+                    while (vnc.IsPlaying)
+                    {
+                        if (token.IsCancellationRequested)
+                        {
+                            return;
+                        }
+                        await vnc.WaitForPlaybackFinishAsync();
+                    }
+                    Exception exc = null;
+                    await ctx.Message.RespondAsync($"Playing `{song.filename}`");
+                    await vnc.SendSpeakingAsync(true);
+                    try
+                    {
+                        await convert(vnc, song, token);
+                    }
+                    catch (Exception ex)
+                    {
+                        exc = ex;
+                    }
+                    finally
+                    {
+                        await vnc.SendSpeakingAsync(false);
+                        File.Delete(song.filepath);
+                        playlist.Remove(song);
+                    }
+                    if (exc != null)
+                    {
+                        await ctx.RespondAsync($"An exception occured during playback: `{exc.GetType()}: {exc.Message}`");
+                    }
                 }
-                Exception exc = null;
-                await ctx.Message.RespondAsync($"Playing `{song.filename}`");
-                await vnc.SendSpeakingAsync(true);
-
-                try
-                {
-                    await convert(vnc, song);
-                }
-                catch (Exception ex)
-                {
-                    exc = ex;
-                }
-                finally
-                {
-                    await vnc.SendSpeakingAsync(false);
-                    File.Delete(song.filepath);
-                    playlist.Remove(song);
-
-                }
-                if (exc != null)
-                {
-                    await ctx.RespondAsync($"An exception occured during playback: `{exc.GetType()}: {exc.Message}`");
-                }
-
+            }
+            catch
+            {
+                await ctx.Channel.SendMessageAsync("Playlist empty!");
             }
         }
-        public async Task convert(VoiceNextConnection vnc, Songs song)
+        [Command("skip")]
+        [Description("skips the currently playing track in the playlist")]
+        public async Task skip(CommandContext ctx)
+        {
+
+            await ctx.Message.DeleteAsync();
+            var vnext = ctx.Client.GetVoiceNextClient();
+            if (vnext == null)
+            {
+                await ctx.RespondAsync("Voice not enabled or configured");
+                return;
+            }
+            var vnc = vnext.GetConnection(ctx.Guild);
+            if (vnc == null)
+            {
+                await ctx.RespondAsync("not in guild");
+                return;
+            }
+            if (vnc.IsPlaying == false)
+            {
+                await ctx.RespondAsync("No music currently being played");
+            }
+            else
+            {
+                source.Cancel();
+                source = new CancellationTokenSource();
+                var token = source.Token;
+                try
+                {
+                    foreach (var song in playlist)
+                    {
+                        await ctx.Message.RespondAsync($"Playing `{song.filename}`");
+                        await vnc.SendSpeakingAsync(true);
+                        await convert(vnc, song, token);
+                        while (vnc.IsPlaying)
+                        {
+                            await vnc.WaitForPlaybackFinishAsync();
+                        }
+                        await vnc.SendSpeakingAsync(false);
+                        File.Delete(song.filepath);
+                        playlist.Remove(song);
+
+                    }
+                }
+                catch
+                {
+                    await ctx.Channel.SendMessageAsync("Playlist empty!");
+                }
+            }
+
+
+        }
+        public async Task convert(VoiceNextConnection vnc, Songs song, CancellationToken token)
         {
             var ffmpeg_inf = new ProcessStartInfo
             {
@@ -173,6 +236,12 @@ namespace DeepSector
                 var br = 0;
                 while ((br = ms.Read(buff, 0, buff.Length)) > 0)
                 {
+                    if (token.IsCancellationRequested)
+                    {
+                        playlist.Remove(song);
+                        File.Delete(song.filepath);
+                        return;
+                    }
                     if (br < buff.Length)
                         for (var i = br; i < buff.Length; i++)
                             buff[i] = 0;
