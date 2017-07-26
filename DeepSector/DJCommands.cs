@@ -71,6 +71,11 @@ namespace DeepSector
                 return;
             }
             vnc.Disconnect();
+            playlist.Clear();
+            foreach (FileInfo file in di.GetFiles())
+            {
+                file.Delete();
+            }
         }
         [Command("add")]
         [Description("adds a track to the guilds music queue")]
@@ -124,40 +129,39 @@ namespace DeepSector
             {
                 await ctx.RespondAsync("not in guild");
                 return;
-            }
-            foreach (var song in playlist)
-            {
-                while (vnc.IsPlaying)
+            }         
+                for(var i =0;i<=playlist.Count;i++)
                 {
+                    while (vnc.IsPlaying)
+                    {
 
-                    await vnc.WaitForPlaybackFinishAsync();
+                        await vnc.WaitForPlaybackFinishAsync();
+                    }
+                    if (token.IsCancellationRequested)
+                    {
+                        return;
+                    }
+                    Exception exc = null;
+                    await ctx.Message.RespondAsync($"Playing `{playlist[i].filename}`");
+                    await vnc.SendSpeakingAsync(true);
+                    try
+                    {
+                        await convert(vnc, playlist[i], token);
+                    }
+                    catch (Exception ex)
+                    {
+                        exc = ex;
+                    }
+                    finally
+                    {
+                        await vnc.SendSpeakingAsync(false);
+                    }
+                    if (exc != null)
+                    {
+                        await ctx.RespondAsync($"An exception occured during playback: `{exc.GetType()}: {exc.Message}`");
+                    }
+
                 }
-                if (token.IsCancellationRequested)
-                {
-                    playlist.Remove(song);
-                    return;
-                }
-                Exception exc = null;
-                await ctx.Message.RespondAsync($"Playing `{song.filename}`");
-                await vnc.SendSpeakingAsync(true);
-                try
-                {
-                    await convert(vnc, song, token);
-                }
-                catch (Exception ex)
-                {
-                    exc = ex;
-                }
-                finally
-                {
-                    await vnc.SendSpeakingAsync(false);
-                }
-                if (exc != null)
-                {
-                    await ctx.RespondAsync($"An exception occured during playback: `{exc.GetType()}: {exc.Message}`");
-                }
-                
-            }
             foreach (FileInfo file in di.GetFiles())
             {
                 file.Delete();
@@ -168,8 +172,6 @@ namespace DeepSector
         [Description("skips the currently playing track in the playlist")]
         public async Task skip(CommandContext ctx)
         {
-
-            await ctx.Message.DeleteAsync();
             var vnext = ctx.Client.GetVoiceNextClient();
             if (vnext == null)
             {
@@ -188,10 +190,10 @@ namespace DeepSector
             }
             else
             {
-                playlist.RemoveAt(0);
                 source.Cancel();
                 source = new CancellationTokenSource();
                 var token = source.Token;
+                playlist.RemoveAt(0);
                 if (playlist.Count == 0)
                 {
                     foreach (FileInfo file in di.GetFiles())
@@ -201,22 +203,7 @@ namespace DeepSector
                     await ctx.Channel.SendMessageAsync("Playlist is empty!");
                     return;
                 }
-                foreach (var song in playlist)
-                {
-                    await ctx.Message.RespondAsync($"Playing `{song.filename}`");
-                    await vnc.SendSpeakingAsync(true);
-                    await convert(vnc, song, token);
-                    while (vnc.IsPlaying)
-                    {
-                        await vnc.WaitForPlaybackFinishAsync();
-                    }
-                    playlist.Remove(song);
-                    await vnc.SendSpeakingAsync(false);
-                }
-                foreach (FileInfo file in di.GetFiles())
-                {
-                    file.Delete();
-                }
+                await play(ctx);
             }
         }
         public async Task convert(VoiceNextConnection vnc, Songs song, CancellationToken token)
@@ -257,7 +244,6 @@ namespace DeepSector
         {
             int songcount = 1;
             string songlist = null;
-            await ctx.Message.DeleteAsync();
             foreach (var song in playlist)
             {
                 songlist += $"{songcount}:{song.filename}" + "\n";
@@ -270,9 +256,6 @@ namespace DeepSector
         [Description("selects any song from current playlist and makes a new list containing those songs")]
         public async Task select(CommandContext ctx, [RemainingText]string selection)
         {
-            int songcount = 1;
-            string songlist = null;
-            await ctx.Message.DeleteAsync();
             List<Songs> tempplaylist = new List<Songs>();
             List<int> tracks = new List<int>();
             foreach (char selected in selection)
@@ -293,13 +276,11 @@ namespace DeepSector
                 tempplaylist.Add(playlist[track]);
             }
             playlist = tempplaylist;
+            source.Cancel();
+            source = new CancellationTokenSource();
             await ctx.Channel.SendMessageAsync("Heres the new playlist!");
-            foreach (var song in playlist)
-            {
-                songlist += $"{songcount}:{song.filename}" + "\n";
-                songcount++;
-            }
-            await ctx.Channel.SendMessageAsync(songlist);
+            await viewplaylist(ctx);
+            await play(ctx);
         }
     }
 }
