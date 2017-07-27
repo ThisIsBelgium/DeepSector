@@ -2,23 +2,16 @@
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
-using System.Reflection;
 using System.Threading;
 using DSharpPlus;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.VoiceNext;
-using DSharpPlus.VoiceNext.Codec;
 using Google.Apis.Services;
-using Google.Apis.Discovery;
-using Google.Apis.Util.Store;
 using Google.Apis.YouTube.v3;
 using Google.Apis.YouTube.v3.Data;
 using WrapYoutubeDl;
 using System.Collections.Generic;
-using NAudio;
-using NAudio.Wave;
-using MP3Sharp;
 
 namespace DeepSector
 {
@@ -43,7 +36,7 @@ namespace DeepSector
             var vnc = vnext.GetConnection(ctx.Guild);
             if (vnc != null)
             {
-                await ctx.RespondAsync("already in guild");
+                await ctx.RespondAsync("Already in guild!");
                 return;
             }
             var vstat = ctx.Member?.VoiceState;
@@ -59,24 +52,10 @@ namespace DeepSector
         public async Task leave(CommandContext ctx)
         {
             await ctx.Message.DeleteAsync();
-            var vnext = ctx.Client.GetVoiceNextClient();
-            if (vnext == null)
-            {
-                await ctx.RespondAsync("Voice not enabled or configured");
-                return;
-            }
-            var vnc = vnext.GetConnection(ctx.Guild);
-            if (vnc == null)
-            {
-                await ctx.RespondAsync("not in guild");
-                return;
-            }
+            var vnc = await NotInGuildVerification(ctx);
             vnc.Disconnect();
             playlist.Clear();
-            foreach (FileInfo file in di.GetFiles())
-            {
-                file.Delete();
-            }
+            await wipe(ctx);
         }
         [Command("add")]
         [Description("adds a track to the guilds music queue")]
@@ -101,9 +80,17 @@ namespace DeepSector
                 filename = searchlistresponse.Items[0].Snippet.Title,
                 filepath = outputfolder + filename + ".mp3"
             };
-            var downloader = new AudioDownloader(dl, filename, outputfolder);
-            downloader.FinishedDownload += finished(searchlistresponse, ctx, song);
-            downloader.Download();
+            try
+            {
+                var downloader = new AudioDownloader(dl, filename, outputfolder);
+                downloader.FinishedDownload += finished(searchlistresponse, ctx, song);
+                downloader.Download();
+            }
+            catch
+            {
+               await ctx.Channel.SendMessageAsync("File already in folder");
+               playlist.Add(song);
+            }
 
 
         }
@@ -119,19 +106,8 @@ namespace DeepSector
         {
             var token = source.Token;
             await ctx.Message.DeleteAsync();
-            var vnext = ctx.Client.GetVoiceNextClient();
-            if (vnext == null)
-            {
-                await ctx.RespondAsync("Voice not enabled or configured");
-                return;
-            }
-            var vnc = vnext.GetConnection(ctx.Guild);
-            if (vnc == null)
-            {
-                await ctx.RespondAsync("not in guild");
-                return;
-            }         
-                for(var i =0;i<=playlist.Count;i++)
+            var vnc = await NotInGuildVerification(ctx);
+            for (var i =0;i<=playlist.Count;i++)
                 {
                     while (vnc.IsPlaying)
                     {
@@ -163,28 +139,14 @@ namespace DeepSector
                     }
 
                 }
-            foreach (FileInfo file in di.GetFiles())
-            {
-                file.Delete();
-            }
+            await wipe(ctx);
             playlist.Clear();
         }
         [Command("skip")]
         [Description("skips the currently playing track in the playlist")]
         public async Task skip(CommandContext ctx)
         {
-            var vnext = ctx.Client.GetVoiceNextClient();
-            if (vnext == null)
-            {
-                await ctx.RespondAsync("Voice not enabled or configured");
-                return;
-            }
-            var vnc = vnext.GetConnection(ctx.Guild);
-            if (vnc == null)
-            {
-                await ctx.RespondAsync("not in guild");
-                return;
-            }
+            var vnc = await NotInGuildVerification(ctx);
             if (vnc.IsPlaying == false)
             {
                 await ctx.RespondAsync("No music currently being played");
@@ -197,12 +159,7 @@ namespace DeepSector
                 playlist.RemoveAt(0);
                 if (playlist.Count == 0)
                 {
-                    foreach (FileInfo file in di.GetFiles())
-                    {
-                        file.Delete();
-                    }
-                    await ctx.Channel.SendMessageAsync("Playlist is empty!");
-                    return;
+                    await wipe(ctx);
                 }
                 await play(ctx);
             }
@@ -294,19 +251,80 @@ namespace DeepSector
         [Description("pauses music playback")]
         public async Task pause(CommandContext ctx)
         {
-            await ctx.Message.DeleteAsync();
             await ctx.TriggerTypingAsync();
-            await ctx.Channel.SendMessageAsync("Music has been paused!");
+            await ctx.Message.DeleteAsync();
+            var vnc = await NotInGuildVerification(ctx);
+            if (vnc.IsPlaying == false)
+            {
+                await ctx.RespondAsync("No music currently being played");
+                return;
+            }
+            await vnc.SendSpeakingAsync(false);
             paused = true;
+            await ctx.Channel.SendMessageAsync("Music has been paused!");    
         }
         [Command("resume")]
         [Description("resumes music playback")]
         public async Task unpause(CommandContext ctx)
         {
-            await ctx.Message.DeleteAsync();
             await ctx.TriggerTypingAsync();
-            await ctx.Channel.SendMessageAsync("Music has been resumed!");
+            await ctx.Message.DeleteAsync();
+            var vnc = await NotInGuildVerification(ctx);
+            if (vnc.IsPlaying == true)
+            {
+                await ctx.RespondAsync("Music already playing");
+                return;
+            }
+            if(paused==false)
+            {
+                await ctx.RespondAsync("Music not paused!");
+                return;
+            }
+            await vnc.SendSpeakingAsync(true);
             paused = false;
+            await ctx.Channel.SendMessageAsync("Music has been resumed!");            
+        }
+        public async Task<VoiceNextConnection> NotInGuildVerification(CommandContext ctx)
+        {
+            var vnext = ctx.Client.GetVoiceNextClient();
+            if (vnext == null)
+            {
+                await ctx.RespondAsync("Voice not enabled or configured");
+                return null;
+            }
+            var vnc = vnext.GetConnection(ctx.Guild);
+            if (vnc == null)
+            {
+                await ctx.RespondAsync("Not in guild!");
+                return null;
+            }
+            else
+            {
+                return vnc;
+            }
+
+        }
+        [Command("wipe")]
+        [Description("wipes the music folder ONLY TO BE USED POST PLAYBACK")]
+        [RequirePermissions(Permissions.ManageGuild)]
+        public async Task wipe (CommandContext ctx)
+        {
+            foreach (FileInfo file in di.GetFiles())
+            {
+                file.Delete();
+            }
+            playlist.Clear();
+           await ctx.Channel.SendMessageAsync("Music folder cleared!");
+        }
+        [Command("stop")]
+        [Description("stops music playback and wipes playlist and music folder")]
+        public async Task stop(CommandContext ctx)
+        {
+            await ctx.Message.DeleteAsync();
+            source.Cancel();
+            source = new CancellationTokenSource();
+            await wipe(ctx);
+            await ctx.Channel.SendMessageAsync("Playlist cleared");
         }
     }
 }
