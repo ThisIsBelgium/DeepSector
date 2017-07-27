@@ -1,18 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using DSharpPlus;
-using DSharpPlus.CommandsNext;
-using DSharpPlus.CommandsNext.Exceptions;
-using DSharpPlus.VoiceNext;
-using DSharpPlus.VoiceNext.Codec;
-using Newtonsoft.Json;
-using System.IO;
-using System.Threading;
-
-namespace DeepSector
+﻿namespace DeepSector
 {
     class Program
     {    

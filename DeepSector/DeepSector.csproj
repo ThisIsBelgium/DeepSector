@@ -116,6 +116,10 @@
       <HintPath>packages\Newtonsoft.Json.10.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="PUBGSharp, Version=1.2.4.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\PUBGSharp.1.2.4\lib\net45\PUBGSharp.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Sodium, Version=0.10.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\libsodium-net.0.10.0\lib\Net40\Sodium.dll</HintPath>
       <Private>True</Private>
@@ -226,6 +230,8 @@
     </Compile>
     <Compile Include="DJCommands.cs" />
     <Compile Include="Events.cs" />
+    <Compile Include="OWGameStats.cs" />
+    <Compile Include="OWProfileStats.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Settings.Designer.cs">
@@ -233,6 +239,7 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
+    <Compile Include="PUBGStats.cs" />
     <Compile Include="Songs.cs" />
   </ItemGroup>
   <ItemGroup>
