@@ -28,6 +28,7 @@ namespace DeepSector
         System.IO.DirectoryInfo di = new DirectoryInfo(@"C:\Users\wheeler\Desktop\Music");
         CancellationTokenSource source = new CancellationTokenSource();
         List<Songs> playlist = new List<Songs>();
+        bool paused;
         [Command("join")]
         [Description("joins the users current voice channel")]
         public async Task join(CommandContext ctx)
@@ -230,6 +231,13 @@ namespace DeepSector
                     {
                         return;
                     }
+                    if(paused == true)
+                    {
+                        while(paused == true)
+                        {
+
+                        }
+                    }
                     if (br < buff.Length)
                         for (var i = br; i < buff.Length; i++)
                             buff[i] = 0;
@@ -281,6 +289,24 @@ namespace DeepSector
             await ctx.Channel.SendMessageAsync("Heres the new playlist!");
             await viewplaylist(ctx);
             await play(ctx);
+        }
+        [Command("pause")]
+        [Description("pauses music playback")]
+        public async Task pause(CommandContext ctx)
+        {
+            await ctx.Message.DeleteAsync();
+            await ctx.TriggerTypingAsync();
+            await ctx.Channel.SendMessageAsync("Music has been paused!");
+            paused = true;
+        }
+        [Command("resume")]
+        [Description("resumes music playback")]
+        public async Task unpause(CommandContext ctx)
+        {
+            await ctx.Message.DeleteAsync();
+            await ctx.TriggerTypingAsync();
+            await ctx.Channel.SendMessageAsync("Music has been resumed!");
+            paused = false;
         }
     }
 }
