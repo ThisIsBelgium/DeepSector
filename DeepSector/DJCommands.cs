@@ -277,11 +277,11 @@ namespace DeepSector
             await ctx.TriggerTypingAsync();
             await ctx.Message.DeleteAsync();
             var vnc = await NotInGuildVerification(ctx);
-            if (vnc.IsPlaying == true)
-            {
-                await ctx.RespondAsync("Music already playing");
-                return;
-            }
+            //if (vnc.IsPlaying == true)
+            //{
+            //    await ctx.RespondAsync("Music already playing");
+            //    return;
+            //}
             if(paused==false)
             {
                 await ctx.RespondAsync("Music not paused!");

@@ -24,7 +24,7 @@ namespace DeepSector
                     using (DBDataContext db = new DBDataContext())
                     {
 
-                        await e.Client.SendMessageAsync(e.Guild.DefaultChannel, $"Welcome to the shit show {e.Member.Username}!");
+                        await e.Client.SendMessageAsync(e.Guild.DefaultChannel, $"Welcome to the show {e.Member.Username}!");
                         await e.Member.GrantRoleAsync(e.Guild.GetRole(336934234016972810));
                         var useridstring = e.Member.Id.ToString();
                         tgbr user = new tgbr
@@ -46,7 +46,7 @@ namespace DeepSector
                 };
             Client.GuildMemberRemove += async e =>
             {
-                await e.Client.SendMessageAsync(e.Guild.DefaultChannel, $"Peace {e.Member.Username}, must've been a nerd");
+                await e.Client.SendMessageAsync(e.Guild.DefaultChannel, $"Peace {e.Member.Username}");
             };
 
             Client.MessageCreated += async e =>
@@ -152,13 +152,13 @@ namespace DeepSector
         }
         public async Task leveler(int level, MessageCreateEventArgs e)
         {
-            if (level >= 5)
+            if (level == 2)
             {
                 await RoleChanger(e, "beginner");
             }
-            else if (level >= 7)
+            else if (level == 3)
             {
-                await RoleChanger(e, "DJ");
+                await RoleChanger(e, "dj");
             }
         }
         public  async Task RoleChanger(MessageCreateEventArgs e, string name)

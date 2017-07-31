@@ -235,13 +235,13 @@ namespace DeepSector
         }
         public async Task leveler(int level, CommandContext e)
         {
-            if (level >= 5)
+            if (level == 2)
             {
                 await RoleChanger(e, "beginner");
             }
-            else if (level >= 7)
+            else if (level == 3)
             {
-                await RoleChanger(e, "DJ");
+                await RoleChanger(e, "dj");
             }
         }
         public async Task RoleChanger(CommandContext e, string name)
