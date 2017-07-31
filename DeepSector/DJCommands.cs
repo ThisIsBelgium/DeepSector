@@ -24,6 +24,7 @@ namespace DeepSector
         bool paused;
         [Command("join")]
         [Description("joins the users current voice channel")]
+        [RequirePermissions(Permissions.ManageMessages)]
         public async Task join(CommandContext ctx)
         {
             await ctx.Message.DeleteAsync();
@@ -49,6 +50,7 @@ namespace DeepSector
         }
         [Command("leave")]
         [Description("leaves the voice channel")]
+        [RequirePermissions(Permissions.ManageMessages)]
         public async Task leave(CommandContext ctx)
         {
             await ctx.Message.DeleteAsync();
@@ -59,6 +61,7 @@ namespace DeepSector
         }
         [Command("add")]
         [Description("adds a track to the guilds music queue")]
+        [RequirePermissions(Permissions.ManageMessages)]
         public async Task add(CommandContext ctx, [RemainingText] string trackname)
         {
             await ctx.Message.DeleteAsync();
@@ -102,6 +105,7 @@ namespace DeepSector
         }
         [Command("play")]
         [Description("plays the currently queued songs")]
+        [RequirePermissions(Permissions.ManageMessages)]
         public async Task play(CommandContext ctx)
         {
             var token = source.Token;
@@ -144,6 +148,7 @@ namespace DeepSector
         }
         [Command("skip")]
         [Description("skips the currently playing track in the playlist")]
+        [RequirePermissions(Permissions.ManageMessages)]
         public async Task skip(CommandContext ctx)
         {
             var vnc = await NotInGuildVerification(ctx);
@@ -249,6 +254,7 @@ namespace DeepSector
         }
         [Command("pause")]
         [Description("pauses music playback")]
+        [RequirePermissions(Permissions.ManageMessages)]
         public async Task pause(CommandContext ctx)
         {
             await ctx.TriggerTypingAsync();
@@ -265,6 +271,7 @@ namespace DeepSector
         }
         [Command("resume")]
         [Description("resumes music playback")]
+        [RequirePermissions(Permissions.ManageMessages)]
         public async Task unpause(CommandContext ctx)
         {
             await ctx.TriggerTypingAsync();
@@ -307,6 +314,7 @@ namespace DeepSector
         [Command("wipe")]
         [Description("wipes the music folder ONLY TO BE USED POST PLAYBACK")]
         [RequirePermissions(Permissions.ManageGuild)]
+        [RequirePermissions(Permissions.ManageMessages)]
         public async Task wipe (CommandContext ctx)
         {
             foreach (FileInfo file in di.GetFiles())
@@ -318,6 +326,7 @@ namespace DeepSector
         }
         [Command("stop")]
         [Description("stops music playback and wipes playlist and music folder")]
+        [RequirePermissions(Permissions.ManageMessages)]
         public async Task stop(CommandContext ctx)
         {
             await ctx.Message.DeleteAsync();

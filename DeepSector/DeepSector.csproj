@@ -239,7 +239,6 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
-    <Compile Include="PUBGStats.cs" />
     <Compile Include="Songs.cs" />
   </ItemGroup>
   <ItemGroup>

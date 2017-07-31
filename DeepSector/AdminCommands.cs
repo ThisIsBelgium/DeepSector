@@ -161,46 +161,50 @@ namespace DeepSector
         [RequirePermissions(Permissions.ManageGuild)]
         public async Task givetokens(CommandContext ctx, DiscordMember member, int amount)
         {
-            await ctx.Message.DeleteAsync();
-            var useridstring = member.Id.ToString();
-            await ctx.TriggerTypingAsync();
-            var userquery = from tgbr in db.tgbrs
-                            where tgbr.userid == useridstring
-                            select tgbr;
-            foreach (var user in userquery)
+            using (DBDataContext db = new DBDataContext())
             {
-                if (amount > 100)
+                await ctx.Message.DeleteAsync();
+                var useridstring = member.Id.ToString();
+                await ctx.TriggerTypingAsync();
+                var userquery = from tgbr in db.tgbrs
+                                where tgbr.userid == useridstring
+                                select tgbr;
+                foreach (var user in userquery)
                 {
-                    amount = 100;
-                    var channel = await ctx.Member.CreateDmChannelAsync();
-                    await channel.SendMessageAsync("Bot is angry that you tried to spam tokens remember now MAX 100 tokens");
-                }
-                user.tokens += amount;
-                if (user.tokens >= 100)
-                {
-                    user.levels++;
-                    await ctx.Channel.SendMessageAsync($"{user.username} just leveled to level {user.levels} congrats");
-                    user.tokens = 0;
-                }
-                else if (user.tokens == null)
-                {
-                    user.tokens = 0;
+                    if (amount > 100)
+                    {
+                        amount = 100;
+                        var channel = await ctx.Member.CreateDmChannelAsync();
+                        await channel.SendMessageAsync("Bot is angry that you tried to spam tokens remember now MAX 100 tokens");
+                    }
                     user.tokens += amount;
                     if (user.tokens >= 100)
                     {
                         user.levels++;
+                        await leveler(user.levels, ctx);
                         await ctx.Channel.SendMessageAsync($"{user.username} just leveled to level {user.levels} congrats");
                         user.tokens = 0;
                     }
-                    await ctx.Channel.SendMessageAsync($"{member.DisplayName} was given {amount} tokens congrats!");
+                    else if (user.tokens == null)
+                    {
+                        user.tokens = 0;
+                        user.tokens += amount;
+                        if (user.tokens >= 100)
+                        {
+                            user.levels++;
+                            await leveler(user.levels, ctx);
+                            await ctx.Channel.SendMessageAsync($"{user.username} just leveled to level {user.levels} congrats");
+                            user.tokens = 0;
+                        }
+                        await ctx.Channel.SendMessageAsync($"{member.DisplayName} was given {amount} tokens congrats!");
+                    }
+                    else
+                    {
+                        await ctx.Channel.SendMessageAsync($"{member.DisplayName} was given {amount} tokens congrats!");
+                    }
+                    db.SubmitChanges();
                 }
-                else
-                {
-                    await ctx.Channel.SendMessageAsync($"{member.DisplayName} was given {amount} tokens congrats!");
-                }
-                db.SubmitChanges();
             }
-
         }
         [Command("addusers")]
         [Description("adds users to db")]
@@ -228,6 +232,32 @@ namespace DeepSector
                 }
             }
             await ctx.Channel.SendMessageAsync("Users added to db!");
+        }
+        public async Task leveler(int level, CommandContext e)
+        {
+            if (level >= 5)
+            {
+                await RoleChanger(e, "beginner");
+            }
+            else if (level >= 7)
+            {
+                await RoleChanger(e, "DJ");
+            }
+        }
+        public async Task RoleChanger(CommandContext e, string name)
+        {
+            List<DiscordRole> roles = new List<DiscordRole>();
+            var serverRoles = e.Guild.Roles;
+            foreach (var role in serverRoles)
+            {
+                if (role.Name.Contains(name))
+                {
+                    roles.Add(role);
+                    await e.Channel.SendMessageAsync($"Congrats {e.Member.Username} has been granted the role {role}");
+                }
+            }
+            var memeber = await e.Guild.GetMemberAsync(e.Member.Id);
+            await memeber.ReplaceRolesAsync(roles);
         }
     }
 }

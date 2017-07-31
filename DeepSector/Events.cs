@@ -1,8 +1,11 @@
 ﻿using System.Linq;
 using System.Threading.Tasks;
 using DSharpPlus;
+using DSharpPlus.CommandsNext;
+using DSharpPlus.CommandsNext.Attributes;
+using DSharpPlus.VoiceNext;
 using Newtonsoft.Json;
-
+using System.Collections.Generic;
 
 namespace DeepSector
 {
@@ -48,8 +51,16 @@ namespace DeepSector
 
             Client.MessageCreated += async e =>
             {
+                DiscordRole admin = default(DiscordRole);
                 DiscordMember member = await e.Guild.GetMemberAsync(e.Author.Id);
-                var admin = e.Guild.GetRole(336906767109849107);
+                var roles = e.Guild.Roles;
+                foreach (var role in roles)
+                {
+                    if (role.Name.Contains("admin"))
+                    {
+                        admin = role;
+                    }
+                }
 
                 if (e.Message.Content.ToLower() == "#adminon" && member.Roles.FirstOrDefault() == admin || active == true)
                 {
@@ -124,9 +135,9 @@ namespace DeepSector
                             if (querylist[0].msg_count >= (3 * querylist[0].levels))
                             {
                                 querylist[0].levels++;
+                                await leveler(querylist[0].levels, e);
                                 querylist[0].msg_count = 0;
                                 db.SubmitChanges();
-                                await e.Channel.SendMessageAsync($"{e.Author.Username} just leveled to level {querylist[0].levels} congrats!");
                             }
                             else
                             {
@@ -139,8 +150,32 @@ namespace DeepSector
             };
             await Task.Delay(-1);
         }
-        static void leveler() { 
-}
+        public async Task leveler(int level, MessageCreateEventArgs e)
+        {
+            if (level >= 5)
+            {
+                await RoleChanger(e, "beginner");
+            }
+            else if (level >= 7)
+            {
+                await RoleChanger(e, "DJ");
+            }
+        }
+        public  async Task RoleChanger(MessageCreateEventArgs e, string name)
+        {
+            List<DiscordRole> roles = new List<DiscordRole>();
+            var serverRoles = e.Guild.Roles;
+            foreach (var role in serverRoles)
+            {
+                if (role.Name.Contains(name))
+                {
+                    roles.Add(role);
+                    await e.Channel.SendMessageAsync($"Congrats {e.Author.Username} has been granted the role {role}");
+                }
+            }
+            var memeber = await e.Guild.GetMemberAsync(e.Author.Id);
+            await memeber.ReplaceRolesAsync(roles);
+        }
         public struct ConfigJson
         {
             [JsonProperty("token")]
