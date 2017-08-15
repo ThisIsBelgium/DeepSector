@@ -154,27 +154,50 @@ namespace DeepSector
         {
             if (level == 2)
             {
-                await RoleChanger(e, "beginner");
+                Permissions rolepermissions = Permissions.ChangeNickname;
+                await RoleChanger(e, "beginner", rolepermissions);
             }
             else if (level == 3)
             {
-                await RoleChanger(e, "dj");
+                Permissions rolepermissions = Permissions.ManageMessages;
+                await RoleChanger(e, "dj", rolepermissions);
             }
         }
-        public  async Task RoleChanger(MessageCreateEventArgs e, string name)
+        public  async Task RoleChanger(MessageCreateEventArgs e, string name,Permissions permissions)
         {
             List<DiscordRole> roles = new List<DiscordRole>();
             var serverRoles = e.Guild.Roles;
+            int counter = 0;
+            bool roleExists = true;
             foreach (var role in serverRoles)
             {
-                if (role.Name.Contains(name))
+                if (role.Name.ToLower().Contains(name))
                 {
                     roles.Add(role);
-                    await e.Channel.SendMessageAsync($"Congrats {e.Author.Username} has been granted the role {role}");
+                    await e.Channel.SendMessageAsync($"Congrats {e.Author.Username} has been granted the role {role.Name}");
+                }
+                else if (role.Name.ToLower().Contains(name) == false)
+                {
+                    counter++;
+                    if (counter == serverRoles.Count)
+                    {
+                        roleExists = false;
+                    }
+                }
+                if (roleExists == false)
+                {
+                    var createdRole = await e.Guild.CreateRoleAsync(name, permissions);
+                    await e.Channel.SendMessageAsync($"Congrats {e.Author.Username} has been granted the role {role.Name}");
+                    roles.Add(createdRole);
                 }
             }
-            var memeber = await e.Guild.GetMemberAsync(e.Author.Id);
-            await memeber.ReplaceRolesAsync(roles);
+            foreach(var member in e.Guild.Members)
+            {
+                if (member.Id == e.Author.Id)
+                {
+                   await member.ReplaceRolesAsync(roles);
+                }
+            }
         }
         public struct ConfigJson
         {

@@ -181,7 +181,7 @@ namespace DeepSector
                     if (user.tokens >= 100)
                     {
                         user.levels++;
-                        await leveler(user.levels, ctx);
+                        await leveler(user.levels, ctx,member);
                         await ctx.Channel.SendMessageAsync($"{user.username} just leveled to level {user.levels} congrats");
                         user.tokens = 0;
                     }
@@ -192,7 +192,7 @@ namespace DeepSector
                         if (user.tokens >= 100)
                         {
                             user.levels++;
-                            await leveler(user.levels, ctx);
+                            await leveler(user.levels, ctx,member);
                             await ctx.Channel.SendMessageAsync($"{user.username} just leveled to level {user.levels} congrats");
                             user.tokens = 0;
                         }
@@ -233,31 +233,49 @@ namespace DeepSector
             }
             await ctx.Channel.SendMessageAsync("Users added to db!");
         }
-        public async Task leveler(int level, CommandContext e)
+        public async Task leveler(int level, CommandContext e,DiscordMember member)
         {
+
             if (level == 2)
             {
-                await RoleChanger(e, "beginner");
+                Permissions rolepermissions = Permissions.ChangeNickname;
+                await RoleChanger(e, "beginner", rolepermissions,member);
             }
             else if (level == 3)
             {
-                await RoleChanger(e, "dj");
+                Permissions rolepermissions = Permissions.ManageMessages;
+                await RoleChanger(e, "dj", rolepermissions,member);
             }
         }
-        public async Task RoleChanger(CommandContext e, string name)
+        public async Task RoleChanger(CommandContext e, string name, Permissions permissions,DiscordMember member)
         {
             List<DiscordRole> roles = new List<DiscordRole>();
             var serverRoles = e.Guild.Roles;
+            int counter = 0;
+            bool roleExists = true;
             foreach (var role in serverRoles)
             {
-                if (role.Name.Contains(name))
+                if (role.Name.ToLower().Contains(name))
                 {
                     roles.Add(role);
-                    await e.Channel.SendMessageAsync($"Congrats {e.Member.Username} has been granted the role {role}");
+                    await e.Channel.SendMessageAsync($"Congrats {member.Username} has been granted the role {role.Name}");
+                }
+                else if (role.Name.ToLower().Contains(name)==false)
+                {
+                    counter++;
+                    if(counter == serverRoles.Count)
+                    {
+                        roleExists = false;
+                    }
+                }
+                if (roleExists == false)
+                {
+                    var createdRole = await e.Guild.CreateRoleAsync(name, permissions);
+                    await e.Channel.SendMessageAsync($"Congrats {member.Username} has been granted the role {role.Name}");
+                    roles.Add(createdRole);
                 }
             }
-            var memeber = await e.Guild.GetMemberAsync(e.Member.Id);
-            await memeber.ReplaceRolesAsync(roles);
+            await member.ReplaceRolesAsync(roles);
         }
     }
 }
